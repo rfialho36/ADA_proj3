@@ -1,3 +1,7 @@
+/**
+ * chatgpt was used
+ */
+
 import java.io.*;
 import java.util.*;
 
@@ -46,10 +50,10 @@ public class Main {
 
         int maxPaths = dinic.maxFlow(lv, ld);
 
-        // Calculate the maximum possible number of stolen gold bars
-        int maxGoldBars = maxPaths * B;
+// Calculate the maximum possible number of stolen gold bars
+        int maxGoldBars = Math.min(T, maxPaths) * B;
 
-        // Print the result
+// Print the result
         System.out.println(maxGoldBars);
     }
 
