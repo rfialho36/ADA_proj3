@@ -1,7 +1,3 @@
-/**
- * foi usado chatgpt
- */
-
 import java.io.*;
 import java.util.*;
 
@@ -12,21 +8,42 @@ public class Main {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         StringTokenizer tokenizer = new StringTokenizer(reader.readLine());
 
-        int T = Integer.parseInt(tokenizer.nextToken()); // Number of thieves (not used directly)
+        int T = Integer.parseInt(tokenizer.nextToken()); // Number of thieves
         int B = Integer.parseInt(tokenizer.nextToken()); // Number of gold bars in the seized bag
         int L = Integer.parseInt(tokenizer.nextToken()); // Number of locations
         int R = Integer.parseInt(tokenizer.nextToken()); // Number of roads
 
         // Initialize the capacity graph
-        int[][] capacity = new int[L + 1][L + 1];
+        int[][] capacity = new int[2 * L + 2][2 * L + 2]; // Double the number of vertices plus a source and sink
+        List<List<Integer>> adj = new ArrayList<>();
+        for (int i = 0; i <= 2 * L + 1; i++) {
+            adj.add(new ArrayList<>());
+        }
 
         // Read the roads and build the graph
         for (int i = 0; i < R; i++) {
             tokenizer = new StringTokenizer(reader.readLine());
             int l1 = Integer.parseInt(tokenizer.nextToken());
             int l2 = Integer.parseInt(tokenizer.nextToken());
-            capacity[l1][l2] = 1;
-            capacity[l2][l1] = 1; // Since the roads are bidirectional
+            capacity[2 * l1 + 1][2 * l2] = 1; // Edge from l1 out to l2 in
+            capacity[2 * l2 + 1][2 * l1] = 1; // Edge from l2 out to l1 in
+            adj.get(2 * l1 + 1).add(2 * l2);
+            adj.get(2 * l2 + 1).add(2 * l1);
+            adj.get(2 * l2).add(2 * l1 + 1);
+            adj.get(2 * l1).add(2 * l2 + 1);
+
+            // Add reverse edges with capacity 0 to handle backtracking
+            capacity[2 * l2][2 * l1 + 1] = 0; // Reverse edge for backtracking prevention
+            capacity[2 * l1][2 * l2 + 1] = 0; // Reverse edge for backtracking prevention
+            adj.get(2 * l2).add(2 * l1 + 1);
+            adj.get(2 * l1).add(2 * l2 + 1);
+        }
+
+        // Assign capacities to each vertex (split into in and out vertices)
+        for (int i = 1; i <= L; i++) {
+            capacity[2 * i][2 * i + 1] = INF; // Edge from in-vertex to out-vertex
+            adj.get(2 * i).add(2 * i + 1);
+            adj.get(2 * i + 1).add(2 * i);
         }
 
         // Read the vault and destination locations
@@ -34,110 +51,73 @@ public class Main {
         int lv = Integer.parseInt(tokenizer.nextToken()); // Location of the vault
         int ld = Integer.parseInt(tokenizer.nextToken()); // Location of the destination
 
-        // Use the Edmonds-Karp algorithm to find the maximum number of disjoint paths
-        int maxPaths = dinic(capacity, lv, ld, L, T);
+        // Vault and destination vertices should have infinite capacity
+        capacity[2 * lv][2 * lv + 1] = INF;
+        capacity[2 * ld][2 * ld + 1] = INF;
+
+        // Use the Dinic's algorithm to find the maximum flow
+        int maxFlow = dinic(capacity, 2 * lv, 2 * ld + 1, 2 * L + 2, T);
 
         // Calculate the maximum possible number of stolen gold bars
-        int maxGoldBars = maxPaths * B;
+        int maxGoldBars = Math.min(T, maxFlow) * B;
 
         // Print the result
         System.out.println(maxGoldBars);
     }
 
-    // BFS function to find if there is an augmenting path
-    private static boolean bfs(int[][] capacity, int source, int sink, int[] parent, int nodes) {
-        boolean[] visited = new boolean[nodes + 1];
+    private static boolean bfs(int[][] capacity, int source, int sink, int[] level, int nodes) {
+        Arrays.fill(level, -1);
+        level[source] = 0;
         Queue<Integer> queue = new LinkedList<>();
         queue.add(source);
-        visited[source] = true;
-        parent[source] = -1;
 
         while (!queue.isEmpty()) {
             int u = queue.poll();
 
-            for (int v = 1; v <= nodes; v++) {
-                if (!visited[v] && capacity[u][v] > 0) {
+            for (int v = 0; v < nodes; v++) {
+                if (level[v] < 0 && capacity[u][v] > 0) {
+                    level[v] = level[u] + 1;
                     queue.add(v);
-                    parent[v] = u;
-                    visited[v] = true;
-
-                    if (v == sink)
-                        return true;
                 }
             }
         }
-        return false;
+        return level[sink] >= 0;
+    }
+
+    private static int dfs(int[][] capacity, int[] level, int[] ptr, int u, int sink, int flow) {
+        if (u == sink) {
+            return flow;
+        }
+        for (; ptr[u] < capacity.length; ptr[u]++) {
+            int v = ptr[u];
+            if (level[v] == level[u] + 1 && capacity[u][v] > 0) {
+                int newFlow = Math.min(flow, capacity[u][v]);
+                int pushed = dfs(capacity, level, ptr, v, sink, newFlow);
+                if (pushed > 0) {
+                    capacity[u][v] -= pushed;
+                    capacity[v][u] += pushed;
+                    return pushed;
+                }
+            }
+        }
+        return 0;
     }
 
     private static int dinic(int[][] capacity, int source, int sink, int nodes, int thieves) {
         int[] level = new int[nodes + 1];
         int[] ptr = new int[nodes + 1];
-        int[] queue = new int[nodes + 1];
-
         int maxFlow = 0;
 
-        while (true) {
-            Arrays.fill(level, -1);
-            level[source] = 0;
-
-            int head = 0, tail = 0;
-            queue[tail++] = source;
-
-            while (head < tail) {
-                int u = queue[head++];
-                for (int v = 1; v <= nodes; v++) {
-                    if (level[v] == -1 && capacity[u][v] > 0) {
-                        queue[tail++] = v;
-                        level[v] = level[u] + 1;
-                    }
-                }
-            }
-
-            if (level[sink] == -1) {
-                break;
-            }
-
-            Arrays.fill(ptr, 0);
-
-            while (true) {
-                int flow = dfs(source, sink, INF, ptr, level, capacity);
-                if (flow == 0) {
-                    break;
-                }
+        while (bfs(capacity, source, sink, level, nodes)) {
+            Arrays.fill(ptr, 0); // Initialize with 0
+            int flow;
+            while ((flow = dfs(capacity, level, ptr, source, sink, INF)) > 0) {
                 maxFlow += flow;
                 if (maxFlow >= thieves) {
-                    break;
+                    return maxFlow;
                 }
             }
-
-            if (maxFlow >= thieves) {
-                break;
-            }
         }
-
         return maxFlow;
-    }
-
-    private static int dfs(int u, int sink, int flow, int[] ptr, int[] level, int[][] capacity) {
-        if (u == sink || flow == 0) {
-            return flow;
-        }
-
-        for (; ptr[u] <= level[u]; ptr[u]++) {
-            int v = ptr[u];
-            if (level[v] != level[u] + 1 || capacity[u][v] == 0) {
-                continue;
-            }
-
-            int newFlow = dfs(v, sink, Math.min(flow, capacity[u][v]), ptr, level, capacity);
-
-            if (newFlow > 0) {
-                capacity[u][v] -= newFlow;
-                capacity[v][u] += newFlow;
-                return newFlow;
-            }
-        }
-
-        return 0;
     }
 }
