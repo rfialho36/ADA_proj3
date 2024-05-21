@@ -1,7 +1,3 @@
-/**
- * foi usado chatgpt
- */
-
 import java.io.*;
 import java.util.*;
 
@@ -19,6 +15,10 @@ public class Main {
 
         // Initialize the capacity graph
         int[][] capacity = new int[L + 1][L + 1];
+        List<Integer>[] adj = new List[L + 1];
+        for (int i = 0; i <= L; i++) {
+            adj[i] = new ArrayList<>();
+        }
 
         // Read the roads and build the graph
         for (int i = 0; i < R; i++) {
@@ -27,6 +27,8 @@ public class Main {
             int l2 = Integer.parseInt(tokenizer.nextToken());
             capacity[l1][l2] = 1;
             capacity[l2][l1] = 1; // Since the roads are bidirectional
+            adj[l1].add(l2);
+            adj[l2].add(l1);
         }
 
         // Read the vault and destination locations
@@ -34,8 +36,15 @@ public class Main {
         int lv = Integer.parseInt(tokenizer.nextToken()); // Location of the vault
         int ld = Integer.parseInt(tokenizer.nextToken()); // Location of the destination
 
-        // Use the Edmonds-Karp algorithm to find the maximum number of disjoint paths
-        int maxPaths = edmondsKarp(capacity, lv, ld, L, T);
+        // Use the Dinic algorithm to find the maximum number of disjoint paths
+        Dinic dinic = new Dinic(L);
+        for (int i = 1; i <= L; i++) {
+            for (int j : adj[i]) {
+                dinic.addEdge(i, j, capacity[i][j]);
+            }
+        }
+
+        int maxPaths = dinic.maxFlow(lv, ld);
 
         // Calculate the maximum possible number of stolen gold bars
         int maxGoldBars = maxPaths * B;
@@ -44,58 +53,85 @@ public class Main {
         System.out.println(maxGoldBars);
     }
 
-    // BFS function to find if there is an augmenting path
-    private static boolean bfs(int[][] capacity, int source, int sink, int[] parent, int nodes) {
-        boolean[] visited = new boolean[nodes + 1];
-        Queue<Integer> queue = new LinkedList<>();
-        queue.add(source);
-        visited[source] = true;
-        parent[source] = -1;
+    static class Dinic {
+        int nodes;
+        List<Edge>[] adj;
+        int[] level;
+        int[] ptr;
+        int source;
+        int sink;
 
-        while (!queue.isEmpty()) {
-            int u = queue.poll();
+        static class Edge {
+            int v, rev, cap, flow;
+            Edge(int v, int rev, int cap) {
+                this.v = v;
+                this.rev = rev;
+                this.cap = cap;
+                this.flow = 0;
+            }
+        }
 
-            for (int v = 1; v <= nodes; v++) {
-                if (!visited[v] && capacity[u][v] > 0) {
-                    queue.add(v);
-                    parent[v] = u;
-                    visited[v] = true;
+        Dinic(int nodes) {
+            this.nodes = nodes;
+            adj = new List[nodes + 1];
+            for (int i = 0; i <= nodes; i++) {
+                adj[i] = new ArrayList<>();
+            }
+            level = new int[nodes + 1];
+            ptr = new int[nodes + 1];
+        }
 
-                    if (v == sink)
-                        return true;
+        void addEdge(int u, int v, int cap) {
+            adj[u].add(new Edge(v, adj[v].size(), cap));
+            adj[v].add(new Edge(u, adj[u].size() - 1, 0)); // reverse edge for residual graph
+        }
+
+        boolean bfs() {
+            Arrays.fill(level, -1);
+            level[source] = 0;
+            Queue<Integer> q = new LinkedList<>();
+            q.add(source);
+            while (!q.isEmpty()) {
+                int u = q.poll();
+                for (Edge e : adj[u]) {
+                    if (level[e.v] < 0 && e.flow < e.cap) {
+                        level[e.v] = level[u] + 1;
+                        q.add(e.v);
+                    }
                 }
             }
-        }
-        return false;
-    }
-
-    // Edmonds-Karp algorithm to find the maximum flow
-
-    private static int edmondsKarp(int[][] capacity, int source, int sink, int nodes, int thieves) {
-        int u, v;
-        int[] parent = new int[nodes + 1];
-        int maxFlow = 0;
-
-        // Augment the flow while there is a path from source to sink
-        while (maxFlow < thieves && bfs(capacity, source, sink, parent, nodes)) {
-            // Find the maximum flow through the path found.
-            int pathFlow = INF;
-            for (v = sink; v != source; v = parent[v]) {
-                u = parent[v];
-                pathFlow = Math.min(pathFlow, capacity[u][v]);
-            }
-
-            // update capacities of the edges and reverse edges along the path
-            for (v = sink; v != source; v = parent[v]) {
-                u = parent[v];
-                capacity[u][v] -= pathFlow;
-                capacity[v][u] += pathFlow;
-            }
-
-            // Add path flow to overall flow
-            maxFlow += pathFlow;
+            return level[sink] >= 0;
         }
 
-        return maxFlow;
+        int dfs(int u, int flow) {
+            if (u == sink) return flow;
+            for (; ptr[u] < adj[u].size(); ptr[u]++) {
+                Edge e = adj[u].get(ptr[u]);
+                if (level[e.v] == level[u] + 1 && e.flow < e.cap) {
+                    int df = dfs(e.v, Math.min(flow, e.cap - e.flow));
+                    if (df > 0) {
+                        e.flow += df;
+                        adj[e.v].get(e.rev).flow -= df;
+                        return df;
+                    }
+                }
+            }
+            return 0;
+        }
+
+        int maxFlow(int source, int sink) {
+            this.source = source;
+            this.sink = sink;
+            int flow = 0;
+            while (bfs()) {
+                Arrays.fill(ptr, 0);
+                while (true) {
+                    int df = dfs(source, INF);
+                    if (df == 0) break;
+                    flow += df;
+                }
+            }
+            return flow;
+        }
     }
 }
