@@ -1,3 +1,7 @@
+/**
+ * Done with the help copilot and chatGPT
+ */
+
 import java.io.*;
 import java.util.*;
 
@@ -31,17 +35,11 @@ public class Main {
             adj.get(2 * l2 + 1).add(2 * l1);
             adj.get(2 * l2).add(2 * l1 + 1);
             adj.get(2 * l1).add(2 * l2 + 1);
-
-            // Add reverse edges with capacity 0 to handle backtracking
-            capacity[2 * l2][2 * l1 + 1] = 0; // Reverse edge for backtracking prevention
-            capacity[2 * l1][2 * l2 + 1] = 0; // Reverse edge for backtracking prevention
-            adj.get(2 * l2).add(2 * l1 + 1);
-            adj.get(2 * l1).add(2 * l2 + 1);
         }
 
         // Assign capacities to each vertex (split into in and out vertices)
         for (int i = 1; i <= L; i++) {
-            capacity[2 * i][2 * i + 1] = INF; // Edge from in-vertex to out-vertex
+            capacity[2 * i][2 * i + 1] = 1; // Edge from in-vertex to out-vertex
             adj.get(2 * i).add(2 * i + 1);
             adj.get(2 * i + 1).add(2 * i);
         }
