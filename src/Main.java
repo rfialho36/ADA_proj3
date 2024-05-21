@@ -34,7 +34,7 @@ public class Main {
         int lv = Integer.parseInt(tokenizer.nextToken()); // Location of the vault
         int ld = Integer.parseInt(tokenizer.nextToken()); // Location of the destination
 
-        // Use the Edmonds-Karp algorithm to find the maximum number of disjoint paths
+        // Use the Dinic's algorithm to find the maximum number of disjoint paths
         int maxPaths = dinic(capacity, lv, ld, L, T);
 
         // Calculate the maximum possible number of stolen gold bars
@@ -44,100 +44,59 @@ public class Main {
         System.out.println(maxGoldBars);
     }
 
-    // BFS function to find if there is an augmenting path
-    private static boolean bfs(int[][] capacity, int source, int sink, int[] parent, int nodes) {
-        boolean[] visited = new boolean[nodes + 1];
+    private static boolean bfs(int[][] capacity, int source, int sink, int[] level, int nodes) {
+        Arrays.fill(level, -1);
+        level[source] = 0;
         Queue<Integer> queue = new LinkedList<>();
         queue.add(source);
-        visited[source] = true;
-        parent[source] = -1;
 
         while (!queue.isEmpty()) {
             int u = queue.poll();
 
             for (int v = 1; v <= nodes; v++) {
-                if (!visited[v] && capacity[u][v] > 0) {
+                if (level[v] < 0 && capacity[u][v] > 0) {
+                    level[v] = level[u] + 1;
                     queue.add(v);
-                    parent[v] = u;
-                    visited[v] = true;
-
-                    if (v == sink)
-                        return true;
                 }
             }
         }
-        return false;
+        return level[sink] >= 0;
+    }
+
+    private static int dfs(int[][] capacity, int[] level, int[] ptr, int u, int sink, int flow) {
+        if (u == sink) {
+            return flow;
+        }
+        for (; ptr[u] <= level[u]; ptr[u]++) {
+            int v = ptr[u];
+            if (level[v] == level[u] + 1 && capacity[u][v] > 0) {
+                int newFlow = Math.min(flow, capacity[u][v]);
+                int pushed = dfs(capacity, level, ptr, v, sink, newFlow);
+                if (pushed > 0) {
+                    capacity[u][v] -= pushed;
+                    capacity[v][u] += pushed;
+                    return pushed;
+                }
+            }
+        }
+        return 0;
     }
 
     private static int dinic(int[][] capacity, int source, int sink, int nodes, int thieves) {
         int[] level = new int[nodes + 1];
         int[] ptr = new int[nodes + 1];
-        int[] queue = new int[nodes + 1];
-
         int maxFlow = 0;
 
-        while (true) {
-            Arrays.fill(level, -1);
-            level[source] = 0;
-
-            int head = 0, tail = 0;
-            queue[tail++] = source;
-
-            while (head < tail) {
-                int u = queue[head++];
-                for (int v = 1; v <= nodes; v++) {
-                    if (level[v] == -1 && capacity[u][v] > 0) {
-                        queue[tail++] = v;
-                        level[v] = level[u] + 1;
-                    }
-                }
-            }
-
-            if (level[sink] == -1) {
-                break;
-            }
-
-            Arrays.fill(ptr, 0);
-
-            while (true) {
-                int flow = dfs(source, sink, INF, ptr, level, capacity);
-                if (flow == 0) {
-                    break;
-                }
+        while (bfs(capacity, source, sink, level, nodes)) {
+            Arrays.fill(ptr, 1);
+            int flow;
+            while ((flow = dfs(capacity, level, ptr, source, sink, INF)) > 0) {
                 maxFlow += flow;
                 if (maxFlow >= thieves) {
-                    break;
+                    return maxFlow;
                 }
             }
-
-            if (maxFlow >= thieves) {
-                break;
-            }
         }
-
         return maxFlow;
-    }
-
-    private static int dfs(int u, int sink, int flow, int[] ptr, int[] level, int[][] capacity) {
-        if (u == sink || flow == 0) {
-            return flow;
-        }
-
-        for (; ptr[u] <= level[u]; ptr[u]++) {
-            int v = ptr[u];
-            if (level[v] != level[u] + 1 || capacity[u][v] == 0) {
-                continue;
-            }
-
-            int newFlow = dfs(v, sink, Math.min(flow, capacity[u][v]), ptr, level, capacity);
-
-            if (newFlow > 0) {
-                capacity[u][v] -= newFlow;
-                capacity[v][u] += newFlow;
-                return newFlow;
-            }
-        }
-
-        return 0;
     }
 }
