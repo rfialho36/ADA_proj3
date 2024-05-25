@@ -158,24 +158,24 @@ public class VaultBurglarySolver {
      * It finds the maximum flow from the source to the sink.
      *
      * @param level The level of each vertex.
-     * @param ptr   The pointer of each vertex.
-     * @param u     The current vertex.
+     * @param pointer   The pointer of each vertex.
+     * @param source     The current vertex.
      * @param sink  The sink vertex.
      * @param flow  The current flow.
      * @return The maximum flow from the source to the sink.
      */
-    private int dfs(int[] level, int[] ptr, int u, int sink, int flow) {
-        if (u == sink) {
+    private int dfs(int[] level, int[] pointer, int source, int sink, int flow) {
+        if (source == sink) {
             return flow;
         }
-        for (; ptr[u] < adj[u].size(); ptr[u]++) {
-            int v = adj[u].get(ptr[u]);
-            if (level[v] == level[u] + 1 && capacity[u][v] > 0) {
-                int newFlow = Math.min(flow, capacity[u][v]);
-                int pushed = dfs(level, ptr, v, sink, newFlow);
+        for (; pointer[source] < adj[source].size(); pointer[source]++) {
+            int v = adj[source].get(pointer[source]);
+            if (level[v] == level[source] + 1 && capacity[source][v] > 0) {
+                int newFlow = Math.min(flow, capacity[source][v]);
+                int pushed = dfs(level, pointer, v, sink, newFlow);
                 if (pushed > 0) {
-                    capacity[u][v] -= pushed;
-                    capacity[v][u] += pushed;
+                    capacity[source][v] -= pushed;
+                    capacity[v][source] += pushed;
                     return pushed;
                 }
             }
