@@ -33,6 +33,7 @@ public class VaultBurglarySolver {
      * @param numLocations The number of locations.
      * @param numRoads     The number of roads.
      */
+    @SuppressWarnings("unchecked")
     public VaultBurglarySolver(int numThieves, int numGoldBars, int numLocations, int numRoads) {
         this.numThieves = numThieves;
         this.numGoldBars = numGoldBars;
