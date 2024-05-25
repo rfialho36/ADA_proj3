@@ -18,7 +18,7 @@ public class VaultBurglarySolver {
 
     // -------- VARIABLES --------
     private int[][] capacity;
-    private List<List<Integer>> adj;
+    private List<Integer>[] adj;
     private int numThieves, numGoldBars, numLocations;
     private int vaultLocation, destinationLocation;
 
@@ -38,9 +38,9 @@ public class VaultBurglarySolver {
         this.numGoldBars = numGoldBars;
         this.numLocations = numLocations;
         this.capacity = new int[2 * numLocations + 2][2 * numLocations + 2];
-        this.adj = new ArrayList<>();
-        for (int i = 0; i <= 2 * numLocations + 1; i++) {
-            adj.add(new ArrayList<>());
+        this.adj = new ArrayList[2 * numLocations + 2];
+        for (int i = 0; i < adj.length; i++) {
+            adj[i] = new ArrayList<>();
         }
         this.vaultLocation = -1;
         this.destinationLocation = -1;
@@ -76,8 +76,8 @@ public class VaultBurglarySolver {
      */
     private void addEdge(int from, int to, int cap) {
         capacity[from][to] = cap;
-        adj.get(from).add(to);
-        adj.get(to).add(from); // Add reverse path for residual graph
+        adj[from].add(to);
+        adj[to].add(from); // Add reverse path for residual graph
     }
 
     /**
@@ -142,7 +142,7 @@ public class VaultBurglarySolver {
         while (!queue.isEmpty()) {
             int u = queue.poll();
 
-            for (int v : adj.get(u)) {
+            for (int v : adj[u]) {
                 if (level[v] < 0 && capacity[u][v] > 0) {
                     level[v] = level[u] + 1;
                     queue.add(v);
@@ -167,8 +167,8 @@ public class VaultBurglarySolver {
         if (u == sink) {
             return flow;
         }
-        for (; ptr[u] < adj.get(u).size(); ptr[u]++) {
-            int v = adj.get(u).get(ptr[u]);
+        for (; ptr[u] < adj[u].size(); ptr[u]++) {
+            int v = adj[u].get(ptr[u]);
             if (level[v] == level[u] + 1 && capacity[u][v] > 0) {
                 int newFlow = Math.min(flow, capacity[u][v]);
                 int pushed = dfs(level, ptr, v, sink, newFlow);
